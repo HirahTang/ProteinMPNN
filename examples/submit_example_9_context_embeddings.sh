@@ -2,7 +2,7 @@
 #SBATCH --job-name=ProteinMPNN_embed
 #SBATCH --account=project_465002574
 #SBATCH --partition=standard-g
-#SBATCH --array=0-19
+#SBATCH --array=0-59
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=3
@@ -52,7 +52,7 @@ if [[ $num_files -eq 0 ]]; then
     exit 1
 fi
 
-num_tasks=${SLURM_ARRAY_TASK_COUNT:-50}
+num_tasks=${SLURM_ARRAY_TASK_COUNT:-60}
 task_id=${SLURM_ARRAY_TASK_ID:-0}
 chunk_size=$(( (num_files + num_tasks - 1) / num_tasks ))
 start_idx=$(( task_id * chunk_size ))
