@@ -32,7 +32,7 @@ export PATH="/flash/project_465002574/unaagi_env/bin:$PATH"
 rocm-smi || echo "Warning: rocm-smi not available"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-py_script="/scratch/project_465002574/ProteinMPNN/extract_context_embeddings.py"
+py_script="/flash/project_465002574/ProteinMPNN/extract_context_embeddings.py"
 if [[ ! -f "$py_script" ]]; then
     echo "Python script not found: $py_script"
     exit 1
@@ -40,8 +40,8 @@ fi
 echo "Using Python script: $py_script"
 
 input_dir="/scratch/project_465002574/PDB/PDB_cleaned"
-output_128_dir="$input_dir/PDB_128"
-output_20_dir="$input_dir/PDB_20"
+output_128_dir="/scratch/project_465002574/PDB/PDB_128"
+output_20_dir="/scratch/project_465002574/PDB/PDB_20"
 mkdir -p "$output_128_dir" "$output_20_dir"
 
 mapfile -t pdb_files < <(find "$input_dir" -maxdepth 1 -type f -name "*.pdb" | sort)
@@ -52,7 +52,7 @@ if [[ $num_files -eq 0 ]]; then
     exit 1
 fi
 
-num_tasks=${SLURM_ARRAY_TASK_COUNT:-20}
+num_tasks=${SLURM_ARRAY_TASK_COUNT:-50}
 task_id=${SLURM_ARRAY_TASK_ID:-0}
 chunk_size=$(( (num_files + num_tasks - 1) / num_tasks ))
 start_idx=$(( task_id * chunk_size ))
