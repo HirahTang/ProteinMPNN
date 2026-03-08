@@ -42,6 +42,18 @@ def parse_args():
         default="v_48_020",
         help="Model checkpoint stem, e.g. v_48_020",
     )
+    parser.add_argument(
+        "--output_type",
+        type=str,
+        default="encoder",
+        choices=["encoder", "aa_log_probs_20", "aa_probs_20"],
+        help=(
+            "Output representation: "
+            "'encoder' -> context encoder states (L, hidden_dim); "
+            "'aa_log_probs_20' -> context-only log-probabilities over 20 AAs (L, 20); "
+            "'aa_probs_20' -> context-only probabilities over 20 AAs (L, 20)."
+        ),
+    )
     parser.add_argument("--ca_only", action="store_true", default=False)
     parser.add_argument("--use_soluble_model", action="store_true", default=False)
     parser.add_argument("--seed", type=int, default=37)
@@ -138,13 +150,24 @@ def main():
         for layer in model.encoder_layers:
             h_V, h_E = layer(h_V, h_E, E_idx, mask, mask_attend)
 
+        log_probs_ctx = None
+        if args.output_type in ["aa_log_probs_20", "aa_probs_20"]:
+            log_probs_ctx = model.unconditional_probs(X, mask, residue_idx, chain_encoding_all)
+
     mask0 = mask[0].bool()
-    embeddings = h_V[0][mask0].detach().cpu().numpy().astype(np.float32)
+    if args.output_type == "encoder":
+        embeddings = h_V[0][mask0].detach().cpu().numpy().astype(np.float32)
+    elif args.output_type == "aa_log_probs_20":
+        embeddings = log_probs_ctx[0][mask0, :20].detach().cpu().numpy().astype(np.float32)
+    else:
+        embeddings = torch.exp(log_probs_ctx[0][mask0, :20]).detach().cpu().numpy().astype(np.float32)
+
     residue_idx_out = residue_idx[0][mask0].detach().cpu().numpy().astype(np.int32)
     chain_encoding_out = chain_encoding_all[0][mask0].detach().cpu().numpy().astype(np.int32)
     seq_token_idx_out = S[0][mask0].detach().cpu().numpy().astype(np.int32)
 
     alphabet = np.array(list("ACDEFGHIKLMNPQRSTVWYX"))
+    aa_alphabet_20 = np.array(list("ACDEFGHIKLMNPQRSTVWY"))
     seq_chars_out = alphabet[seq_token_idx_out]
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out_file)), exist_ok=True)
@@ -155,6 +178,8 @@ def main():
         chain_encoding=chain_encoding_out,
         seq_token_idx=seq_token_idx_out,
         seq_chars=seq_chars_out,
+        aa_alphabet_20=aa_alphabet_20,
+        output_type=np.array(args.output_type),
         pdb_path=np.array(args.pdb_path),
         selected_chains=np.array(selected_chains, dtype=object),
         model_name=np.array(args.model_name),
