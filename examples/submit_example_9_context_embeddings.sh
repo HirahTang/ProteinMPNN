@@ -38,7 +38,8 @@ python ../extract_context_embeddings.py \
     --pdb_path_chains "$chains_to_use" \
     --model_name v_48_020 \
     --out_file "$output_dir/7H8V_context_embeddings.npz" \
-    --seed 37
+    --seed 37 \
+    --output_type aa_log_probs_20
 
 status=$?
 echo "End time: $(date)"
