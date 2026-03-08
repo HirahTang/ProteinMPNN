@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=ProteinMPNN_test
+#SBATCH --job-name=ProteinMPNN_embed
 #SBATCH --account=project_465002574
 #SBATCH --partition=standard-g
 #SBATCH --nodes=1
@@ -8,12 +8,11 @@
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=32G
 #SBATCH --time=2-00:00:00
-#SBATCH -o /scratch/project_465002574/ProteinMPNN_logs/test_job_%A_%a.log
-#SBATCH -e /scratch/project_465002574/ProteinMPNN_logs/test_job_%A_%a.log
-
+#SBATCH -o /scratch/project_465002574/ProteinMPNN_logs/embed_job_%A.log
+#SBATCH -e /scratch/project_465002574/ProteinMPNN_logs/embed_job_%A.log
 
 echo "============================================================================"
-echo "ProteinMPNN NCAA Benchmark Sampling"
+echo "ProteinMPNN Context-Only Position Embeddings"
 echo "============================================================================"
 echo "Job ID: $SLURM_JOB_ID"
 echo "Running on node: $SLURMD_NODENAME"
@@ -28,23 +27,24 @@ export PATH="/flash/project_465002574/unaagi_env/bin:$PATH"
 
 rocm-smi || echo "Warning: rocm-smi not available"
 
-
 path_to_PDB="/scratch/project_465002574/PDB/PDB_cleaned/7H8V.pdb"
+chains_to_use="A B C D"
 
-output_dir="/scratch/project_465002574/ProteinMPNN_outputs/example_3_score_only_outputs"
-if [ ! -d $output_dir ]
-then
-    mkdir -p $output_dir
+output_dir="/scratch/project_465002574/ProteinMPNN_outputs/context_embeddings"
+mkdir -p "$output_dir"
+
+python ../extract_context_embeddings.py \
+    --pdb_path "$path_to_PDB" \
+    --pdb_path_chains "$chains_to_use" \
+    --model_name v_48_020 \
+    --out_file "$output_dir/7H8V_context_embeddings.npz" \
+    --seed 37
+
+status=$?
+echo "End time: $(date)"
+if [ $status -eq 0 ]; then
+    echo "Embedding extraction finished successfully."
+else
+    echo "Embedding extraction failed with exit code $status"
 fi
-
-chains_to_design="A B C D"
-
-python ../protein_mpnn_run.py \
-        --pdb_path $path_to_PDB \
-        --pdb_path_chains "$chains_to_design" \
-        --out_folder $output_dir \
-        --num_seq_per_target 10 \
-        --sampling_temp "0.1" \
-        --score_only 1 \
-        --seed 37 \
-        --batch_size 1
+exit $status
