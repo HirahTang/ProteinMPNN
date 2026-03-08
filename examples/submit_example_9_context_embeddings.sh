@@ -32,7 +32,12 @@ export PATH="/flash/project_465002574/unaagi_env/bin:$PATH"
 rocm-smi || echo "Warning: rocm-smi not available"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "$script_dir/.." && pwd)"
+py_script="/scratch/project_465002574/ProteinMPNN/extract_context_embeddings.py"
+if [[ ! -f "$py_script" ]]; then
+    echo "Python script not found: $py_script"
+    exit 1
+fi
+echo "Using Python script: $py_script"
 
 input_dir="/scratch/project_465002574/PDB/PDB_cleaned"
 output_128_dir="$input_dir/PDB_128"
@@ -78,7 +83,7 @@ for ((i=start_idx; i<=end_idx; i++)); do
 
     echo "[$((i+1))/$num_files] Processing: $pdb_name"
 
-    if python "$repo_root/extract_context_embeddings.py" \
+    if python "$py_script" \
         --pdb_path "$pdb_path" \
         --model_name v_48_020 \
         --out_file "$out_128" \
@@ -92,7 +97,7 @@ for ((i=start_idx; i<=end_idx; i++)); do
         continue
     fi
 
-    if python "$repo_root/extract_context_embeddings.py" \
+    if python "$py_script" \
         --pdb_path "$pdb_path" \
         --model_name v_48_020 \
         --out_file "$out_20" \
