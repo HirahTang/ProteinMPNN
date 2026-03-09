@@ -58,6 +58,22 @@ chunk_size=$(( (num_files + num_tasks - 1) / num_tasks ))
 start_idx=$(( task_id * chunk_size ))
 end_idx=$(( start_idx + chunk_size - 1 ))
 
+# Optional manual index window override for partial reruns.
+# Example:
+#   sbatch --array=29 --export=ALL,OVERRIDE_START_IDX=50315,OVERRIDE_END_IDX=50909,SKIP_INDEXES=50314 submit_example_9_context_embeddings.sh
+if [[ -n "${OVERRIDE_START_IDX:-}" || -n "${OVERRIDE_END_IDX:-}" ]]; then
+    if [[ -z "${OVERRIDE_START_IDX:-}" || -z "${OVERRIDE_END_IDX:-}" ]]; then
+        echo "Both OVERRIDE_START_IDX and OVERRIDE_END_IDX must be set together."
+        exit 1
+    fi
+    if ! [[ "$OVERRIDE_START_IDX" =~ ^[0-9]+$ && "$OVERRIDE_END_IDX" =~ ^[0-9]+$ ]]; then
+        echo "OVERRIDE_START_IDX and OVERRIDE_END_IDX must be non-negative integers."
+        exit 1
+    fi
+    start_idx=$OVERRIDE_START_IDX
+    end_idx=$OVERRIDE_END_IDX
+fi
+
 if (( start_idx >= num_files )); then
     echo "Task $task_id has no assigned files (num_files=$num_files, num_tasks=$num_tasks)."
     exit 0
@@ -65,6 +81,11 @@ fi
 
 if (( end_idx >= num_files )); then
     end_idx=$(( num_files - 1 ))
+fi
+
+if (( start_idx > end_idx )); then
+    echo "Invalid range: start_idx ($start_idx) is greater than end_idx ($end_idx)."
+    exit 1
 fi
 
 echo "Total PDB files: $num_files"
@@ -75,6 +96,11 @@ ok_count=0
 fail_count=0
 
 for ((i=start_idx; i<=end_idx; i++)); do
+    if [[ -n "${SKIP_INDEXES:-}" ]] && [[ ",${SKIP_INDEXES}," == *",${i},"* ]]; then
+        echo "[$((i+1))/$num_files] Skipping index $i (requested in SKIP_INDEXES)"
+        continue
+    fi
+
     pdb_path="${pdb_files[$i]}"
     pdb_name="$(basename "$pdb_path" .pdb)"
 
